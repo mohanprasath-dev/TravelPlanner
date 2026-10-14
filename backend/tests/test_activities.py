@@ -94,12 +94,23 @@ def test_invalid_activity_id(client):
     ({"date": "tomorrow"}, "Date must be a valid date (YYYY-MM-DD)"),
     ({"date": "2026-11-09"}, "Activity date must be within the trip dates"),
     ({"date": "2026-11-15"}, "Activity date must be within the trip dates"),
+    ({"time": "9:00"}, "Time must be in HH:MM format"),
     ({"time": "25:00"}, "Time must be in HH:MM format"),
+    ({"time": "12:75"}, "Time must be in HH:MM format"),
+    ({"time": "abc"}, "Time must be in HH:MM format"),
+    ({"time": "10:2"}, "Time must be in HH:MM format"),
 ])
 def test_create_activity_invalid_data(client, trip, changes, message):
     response = client.post(f"/api/trips/{trip['id']}/activities", json=activity_data(**changes))
     assert response.status_code == 400
     assert response.get_json() == {"error": message}
+
+
+@pytest.mark.parametrize("valid_time", ["09:00", "12:30", "23:59", ""])
+def test_create_activity_valid_time(client, trip, valid_time):
+    response = client.post(f"/api/trips/{trip['id']}/activities", json=activity_data(time=valid_time))
+    assert response.status_code == 201
+    assert response.get_json()["time"] == valid_time
 
 
 def test_activity_allowed_on_first_and_last_trip_day(client, trip):
@@ -111,3 +122,9 @@ def test_activity_allowed_on_first_and_last_trip_day(client, trip):
 def test_update_activity_invalid_date(client, activity):
     response = client.put(f"/api/activities/{activity['id']}", json=activity_data(date="2027-01-01"))
     assert response.status_code == 400
+
+
+def test_update_activity_invalid_time(client, activity):
+    response = client.put(f"/api/activities/{activity['id']}", json=activity_data(time="9:00"))
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Time must be in HH:MM format"}
