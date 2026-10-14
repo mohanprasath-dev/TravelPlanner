@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from database import get_db
-from models import find_activity, find_trip
+from models import find_activity, find_duplicate_activity, find_trip
 from validation import parse_id, validate_activity
 
 bp = Blueprint("activities", __name__, url_prefix="/api")
@@ -34,6 +34,11 @@ def create_activity(trip_id):
     if error:
         return jsonify(error=error), 400
 
+    if find_duplicate_activity(
+        trip_id, activity["title"], activity["date"], activity["time"], activity["location"]
+    ):
+        return jsonify(error="An identical activity already exists"), 409
+
     db = get_db()
     cursor = db.execute(
         """INSERT INTO activities (trip_id, title, date, time, location, notes)
@@ -57,6 +62,16 @@ def update_activity(activity_id):
     activity, error = validate_activity(request.get_json(silent=True), trip)
     if error:
         return jsonify(error=error), 400
+
+    if find_duplicate_activity(
+        existing["trip_id"],
+        activity["title"],
+        activity["date"],
+        activity["time"],
+        activity["location"],
+        exclude_id=activity_id,
+    ):
+        return jsonify(error="An identical activity already exists"), 409
 
     db = get_db()
     db.execute(

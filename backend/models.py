@@ -26,3 +26,13 @@ def find_trip(trip_id):
 
 def find_activity(activity_id):
     return get_db().execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
+
+
+def find_duplicate_activity(trip_id, title, date, time, location, exclude_id=None):
+    query = """SELECT * FROM activities
+               WHERE trip_id = ? AND title = ? AND date = ? AND time = ? AND location = ?"""
+    params = [trip_id, title, date, time, location]
+    if exclude_id is not None:
+        query += " AND id != ?"
+        params.append(exclude_id)
+    return get_db().execute(query, params).fetchone()
